@@ -1,0 +1,56 @@
+---
+
+- hosts: nexus_host
+  become: true
+  become_user: "{{ nexus_user | default('nexus') }}"
+  vars:
+    image_name: "docker.io/sonatype/nexus3:{{ nexus_version }}-ubi"
+  tasks:
+    - name: Pull Image
+      containers.podman.podman_image:
+        name: "{{ image_name }}"
+
+    - name: Stop nexus & Remove Container
+      ignore_errors: true
+      containers.podman.podman_container:
+        name: nexus
+        state: stopped
+
+    - name: Deploy new Version
+      containers.podman.podman_container:
+        rm: true
+        publish:
+          - "127.0.0.1:8081:8081"
+          - "127.0.0.1:8082:8082"
+        volume:
+          - "/var/lib/containers/nexus/data/nexus:/nexus-data:Z"
+        image: "{{ image_name }}"
+        name: nexus
+        memory: 2g
+        state: quadlet
+
+    - name: Restart Container
+      ansible.builtin.systemd:
+        scope: user
+        daemon_reload: true
+        name: nexus
+        state: restarted
+      
+    - name: Wait for Port to come online
+      retries: 50
+      until: check is not failed
+      register: check
+      ansible.builtin.uri:
+        url: "http://localhost:8081/service/rest/v1/status"
+
+    - name: Get Images
+      register: images
+      containers.podman.podman_image_info:
+
+    - name: Remove Images
+      loop: "{{ images.images | rejectattr('RepoTags.0', 'eq', image_name) }}"
+      loop_control:
+        label: "{{ item.RepoTags | first }}"        
+      containers.podman.podman_image:
+        state: absent
+        name: "{{ item.RepoTags | first }}"

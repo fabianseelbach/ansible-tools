@@ -1,0 +1,65 @@
+---
+
+- hosts: gitlab_host
+  become: true
+  become_user: "{{ gitlab_user | default('gitlab') }}"
+  vars:
+    image_name: "docker.io/gitlab/gitlab-{{ gitlab_edition | default('ce') }}:{{ gitlab_version }}-{{ gitlab_edition | default('ce') }}.0"
+  tasks:
+    - name: Pull Image
+      containers.podman.podman_image:
+        name: "{{ image_name }}"
+
+    - name: Stop GitLab & Remove Container
+      ignore_errors: true
+      containers.podman.podman_container:
+        name: gitlab
+        state: stopped
+
+    - name: Deploy new Version
+      containers.podman.podman_container:
+        rm: true
+        env_file: /var/lib/containers/gitlab/env
+        publish:
+          - "127.0.0.1:3100:443"
+        shm_size: 256m
+        volume:
+          - "/var/lib/containers/gitlab/config:/etc/gitlab"
+          - "/var/lib/containers/gitlab/logs:/var/log/gitlab"
+          - "/var/lib/containers/gitlab/data:/var/opt/gitlab"
+        image: "{{ image_name }}"
+        name: gitlab
+        state: quadlet
+
+    - name: Restart Container
+      ansible.builtin.systemd:
+        scope: user
+        daemon_reload: true
+        name: gitlab
+        state: restarted
+      
+    - name: Wait for Port to come online
+      ansible.builtin.pause:
+        minutes: 5
+
+    - name: Check on Background Migrations
+      changed_when: false
+      register: migrations
+      containers.podman.podman_container_exec:
+        name: gitlab
+        command: "gitlab-rake gitlab:background_migrations:list"
+      until: "'active' not in migrations.stdout"
+      retries: 1200
+
+    - name: Get Images
+      register: images
+      containers.podman.podman_image_info:
+
+
+    - name: Remove Images
+      loop: "{{ images.images | rejectattr('RepoTags.0', 'eq', image_name) }}"
+      loop_control:
+        label: "{{ item.RepoTags | first }}"        
+      containers.podman.podman_image:
+        state: absent
+        name: "{{ item.RepoTags | first }}"
