@@ -50,7 +50,7 @@ stops the existing container, and recreates it with persistent Nexus data at
 Nexus status API is reachable on port `8081`. Any unused Nexus images are then
 removed.
 
-The playbook runs on `localhost` and requires the collection dependencies from
+The playbook runs on `nexus_host` and requires the collection dependencies from
 `requirements.yml` and a specified Nexus version:
 
 ```bash
