@@ -7,9 +7,11 @@ A Collection (not ansible one) of tools I wrote in Ansible to make my life easie
 
 ## Install
 
+```bash
 git clone https://github.com/fabianseelbach/ansible-tools
 cd ansible-tools
 ansible-galaxy collection install -r requirements.yml
+```
 
 ## Playbooks
 
