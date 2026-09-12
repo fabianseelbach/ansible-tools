@@ -1,6 +1,7 @@
 ---
 
-- hosts: gitlab_host
+- name: Upgrade GitLab
+  hosts: gitlab_host
   become: true
   become_user: "{{ gitlab_user | default('gitlab') }}"
   vars:
@@ -10,7 +11,7 @@
       containers.podman.podman_image:
         name: "{{ image_name }}"
 
-    - name: Stop GitLab & Remove Container
+    - name: Stop GitLab & Remove Container # noqa: ignore-errors
       ignore_errors: true
       containers.podman.podman_container:
         name: gitlab
@@ -37,7 +38,7 @@
         daemon_reload: true
         name: gitlab
         state: restarted
-      
+
     - name: Wait for Port to come online
       ansible.builtin.pause:
         minutes: 5
@@ -59,7 +60,7 @@
     - name: Remove Images
       loop: "{{ images.images | rejectattr('RepoTags.0', 'eq', image_name) }}"
       loop_control:
-        label: "{{ item.RepoTags | first }}"        
+        label: "{{ item.RepoTags | first }}"
       containers.podman.podman_image:
         state: absent
         name: "{{ item.RepoTags | first }}"

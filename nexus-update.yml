@@ -1,6 +1,7 @@
 ---
 
-- hosts: nexus_host
+- name: Update Nexus
+  hosts: nexus_host
   become: true
   become_user: "{{ nexus_user | default('nexus') }}"
   vars:
@@ -10,7 +11,7 @@
       containers.podman.podman_image:
         name: "{{ image_name }}"
 
-    - name: Stop nexus & Remove Container
+    - name: Stop nexus & Remove Container # noqa: ignore-errors
       ignore_errors: true
       containers.podman.podman_container:
         name: nexus
@@ -35,7 +36,7 @@
         daemon_reload: true
         name: nexus
         state: restarted
-      
+
     - name: Wait for Port to come online
       retries: 50
       until: check is not failed
@@ -50,7 +51,7 @@
     - name: Remove Images
       loop: "{{ images.images | rejectattr('RepoTags.0', 'eq', image_name) }}"
       loop_control:
-        label: "{{ item.RepoTags | first }}"        
+        label: "{{ item.RepoTags | first }}"
       containers.podman.podman_image:
         state: absent
         name: "{{ item.RepoTags | first }}"
