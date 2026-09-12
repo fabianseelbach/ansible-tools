@@ -1,6 +1,8 @@
 # Ansible Tools
 
-A Collection (not ansible one) of tools I wrote in Ansible to make my life easier.
+A collection of tools I wrote in [Ansible](https://www.ansible.com/) to make my life easier.
+
+Source code: [github.com/fabianseelbach/ansible-tools](https://github.com/fabianseelbach/ansible-tools)
 
 > [!warning]
 > I did not add Vars for like Ports and Paths and Names, as I do not need them.
@@ -17,18 +19,19 @@ ansible-galaxy collection install -r requirements.yml
 
 ### GitLab Upgrade
 
-`gitlab-upgrade.yml` upgrades an existing GitLab installation running as a
-Podman container. The playbook pulls the requested GitLab image, stops and
+[`gitlab-upgrade.yml`](gitlab-upgrade.yml) upgrades an existing
+[GitLab](https://about.gitlab.com/) installation running as a
+[Podman](https://podman.io/) container. The playbook pulls the requested GitLab image, stops and
 replaces the existing container, starts the associated systemd unit, and then
 waits for the background migrations to complete. Any unused GitLab images are
 removed afterward.
 
-Before running the playbook, check the GitLab upgrade path here:
-https://gitlab-com.gitlab.io/support/toolbox/upgrade-path/
+Before running the playbook, check the [GitLab upgrade path](https://gitlab-com.gitlab.io/support/toolbox/upgrade-path/).
 
-The target host must be included in the `gitlab_host` inventory group. Before
-running the playbook, install the collection dependencies and provide the
-GitLab version:
+The target host must be included in the `gitlab_host` inventory group in
+[`inventory.ini`](inventory.ini).
+
+#### Run
 
 ```bash
 ansible-playbook -i inventory.ini gitlab-upgrade.yml \
@@ -45,15 +48,14 @@ ansible-playbook -i inventory.ini gitlab-upgrade.yml \
 
 ### Nexus Update
 
-`nexus-update.yml` upgrades an existing Nexus Repository Manager installation
-running as a Podman container. The playbook pulls the requested Nexus image,
-stops the existing container, and recreates it with persistent Nexus data at
-`/var/lib/containers/nexus/data/nexus`. After restarting, it checks whether the
-Nexus status API is reachable on port `8081`. Any unused Nexus images are then
-removed.
+[`nexus-update.yml`](nexus-update.yml) upgrades an existing
+[Nexus Repository Manager](https://www.sonatype.com/products/sonatype-nexus-repository)
+installation running as a Podman container. The playbook pulls the requested Nexus image,
+stops the existing container, replaces the existing container and starts the associated systemd unit.
+After restarting, it checks whether the Nexus status API is reachable on port `8081`.
+Any unused Nexus images are then removed.
 
-The playbook runs on `nexus_host` and requires the collection dependencies from
-`requirements.yml` and a specified Nexus version:
+#### Run
 
 ```bash
 ansible-playbook -i inventory.ini nexus-update.yml \
