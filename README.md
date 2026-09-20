@@ -17,6 +17,27 @@ ansible-galaxy collection install -r requirements.yml
 
 ## Playbooks
 
+### Fail2Ban Whitelist
+
+[`fail2ban_whitelist.yml`](fail2ban_whitelist.yml) updates the `ignoreip` setting in
+`/etc/fail2ban/jail.local` so that trusted infrastructure and host addresses are not blocked by
+[Fail2Ban](https://www.fail2ban.org/wiki/index.php/Main_Page). The playbook fetches the
+[Better Stack](https://betterstack.com/) IP list from its [status page IP list](https://uptime.betterstack.com/ips.txt),
+collects the IPv4 and IPv6 addresses from all target hosts, merges them with the default local loopback
+addresses, and writes the combined list into Fail2Ban's default section.
+
+#### Run
+
+```bash
+ansible-playbook -i inventory.ini fail2ban_whitelist.yml
+```
+
+#### Variables
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `ignore_ip` | No | `['127.0.0.1/8', '::1/128']` | Base addresses that are always kept in the fail2ban ignore list. The playbook appends Better Stack and host IPs to this list. |
+
 ### GitLab Upgrade
 
 [`gitlab-upgrade.yml`](gitlab-upgrade.yml) upgrades an existing
@@ -50,9 +71,9 @@ ansible-playbook -i inventory.ini gitlab-upgrade.yml \
 
 [`nexus-update.yml`](nexus-update.yml) upgrades an existing
 [Nexus Repository Manager](https://www.sonatype.com/products/sonatype-nexus-repository)
-installation running as a Podman container. The playbook pulls the requested Nexus image,
-stops the existing container, replaces the existing container and starts the associated systemd unit.
-After restarting, it checks whether the Nexus status API is reachable on port `8081`.
+installation running as a [Podman](https://podman.io/) container. The playbook pulls the requested
+Nexus image, stops the existing container, replaces the existing container and starts the associated
+systemd unit. After restarting, it checks whether the Nexus status API is reachable on port `8081`.
 Any unused Nexus images are then removed.
 
 #### Run

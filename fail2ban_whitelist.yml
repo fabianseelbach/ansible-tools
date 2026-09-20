@@ -1,0 +1,56 @@
+- name: Enter Whitelist for Fail2Ban
+  hosts: all
+  vars:
+    ignore_ip: ["127.0.0.1/8", "::1/128"]
+  tasks:
+    - name: get Betterstack IPs
+      run_once: true
+      ansible.builtin.uri:
+        url: https://uptime.betterstack.com/ips.txt
+        return_content: true
+      register: betterstack_ips_file
+      check_mode: false
+
+    - name: Get Host IPs
+      register: host_ips
+      run_once: true
+      loop: "{{ ansible_play_hosts }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      ansible.builtin.setup:
+        gather_subset: network
+
+    - name: Get IP List
+      run_once: true
+      vars:
+        ip_v4: "{{ host_ips.results | map(attribute='ansible_facts.ansible_all_ipv4_addresses') | flatten }}"
+        ip_v6: "{{ host_ips.results | map(attribute='ansible_facts.ansible_all_ipv6_addresses') | flatten }}"
+        betterstack_v4: '{{ betterstack_ips_file.content.splitlines() | select("match", "^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$") | list }}'
+        betterstack_v6: '{{ betterstack_ips_file.content.splitlines() | reject("match", "^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$") | list }}'
+        ip_list_v4: "{{ betterstack_v4 | union(ip_v4) | sort | product(['32']) | map('join', '/') | list }}"
+        ip_list_v6: "{{ betterstack_v6 | union(ip_v6) | sort | product(['64']) | map('join', '/') | list }}"
+      ansible.builtin.set_fact:
+        ignore_ip: "{{ ignore_ip | union(ip_list_v4) | union(ip_list_v6) }}"
+
+    - name: Check Jail
+      register: jail_check
+      become: true
+      ansible.builtin.stat:
+        path: "/etc/fail2ban/jail.local"
+
+    - name: Update Jail
+      notify: Restart Fail2Ban
+      when: jail_check.stat.exists
+      become: true
+      community.general.ini_file:
+        path: "/etc/fail2ban/jail.local"
+        section: DEFAULT
+        option: ignoreip
+        value: "{{ ignore_ip | join(' ') }}"
+
+  handlers:
+    - name: Restart Fail2Ban
+      become: true
+      ansible.builtin.service:
+        name: fail2ban
+        state: restarted
