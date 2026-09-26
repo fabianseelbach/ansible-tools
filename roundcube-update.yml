@@ -1,0 +1,56 @@
+- name: Roundcube Update
+  hosts: all
+  become: true
+  vars:
+    php_version: "85"
+    roundcube_database: "roundcube"
+    roundcube_directory: "/var/www/roundcube/"
+    roundcube_backup_directory: "/opt/backup/"
+    roundcube_backup_name: "{{ ansible_date_time.iso8601_basic_short }}-roundcube-backup"
+  tasks:
+    - name: Backup Current Version - Document Root
+      archive:
+        path: "{{ roundcube_directory }}"
+        dest: "{{ roundcube_backup_directory }}/{{ roundcube_backup_name }}.tgz"
+
+    - name: Backup Current Version - Database
+      mysql_db:
+        state: dump
+        name: "{{ roundcube_database }}"
+        target: "{{ roundcube_backup_directory }}/{{ roundcube_backup_name }}.sql"
+
+    - name: Dir anlegen
+      ansible.builtin.tempfile:
+        state: directory
+      register: temp_dir
+
+    - name: Update
+      block:
+        - name: Unarchive new Version
+          ansible.builtin.unarchive:
+            src: "https://github.com/roundcube/roundcubemail/releases/download/{{ roundcube_version }}/roundcubemail-{{ roundcube_version }}-complete.tar.gz"
+            dest: '{{ temp_dir.path }}/'
+            remote_src: yes
+            owner: root
+
+        - name: Install Update
+          notify: Fix Permissions
+          ansible.builtin.shell:
+            cmd: scl enable php{{ php_version }} -- ./bin/installto.sh -y {{ roundcube_directory | quote }}
+            chdir: "{{ temp_dir.path }}/roundcubemail-{{ roundcube_version }}"
+
+      always:
+        - name: Remove Temp Dir
+          ansible.builtin.file:
+            dest: "{{ temp_dir.path }}"
+            state: absent
+
+  handlers:
+    - name: Fix Permissions
+      become: true
+      ansible.builtin.file:
+        dest: "{{ roundcube_directory }}"
+        owner: apache
+        group: apache
+        state: directory
+        recurse: yes

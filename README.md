@@ -7,6 +7,11 @@ Source code: [github.com/fabianseelbach/ansible-tools](https://github.com/fabian
 > [!warning]
 > I did not add Vars for like Ports and Paths and Names, as I do not need them.
 
+> [!note]
+> All playbooks are tested on [Rocky Linux 9](https://rockylinux.org/) and
+> [CentOS 8](https://www.centos.org/). They are intended to work on [Red Hat Enterprise Linux](https://www.redhat.com/en/technologies/linux-platforms/enterprise-linux)
+> and other RHEL-derived distributions as well, but these are not tested.
+
 ## Install
 
 ```bash
@@ -89,4 +94,33 @@ ansible-playbook -i inventory.ini nexus-update.yml \
 | --- | --- | --- | --- |
 | `nexus_version` | Yes | - | Nexus version for the Sonatype image, for example `3.75.1`. |
 | `nexus_user` | No | `nexus` | User under which Podman container management and the user systemd unit run. |
+
+### Roundcube Update
+
+[`roundcube-update.yml`](roundcube-update.yml) updates an existing
+[Roundcube](https://roundcube.net/) installation served by [Apache](https://httpd.apache.org/).
+It first backs up the document root and database,
+then downloads the requested release from [Roundcube's GitHub releases](https://github.com/roundcube/roundcubemail/releases)
+and runs its `installto.sh` update script. The temporary download directory is removed afterward,
+and the playbook restores the document root's `apache` ownership.
+
+The playbook uses PHP from [Remi's Safe repository](https://rpms.remirepo.net/), enabled through
+Software Collections. Install and configure the repository and the matching PHP SCL (for example,
+`php85`) on the target host before running the playbook.
+
+#### Run
+
+```bash
+ansible-playbook -i inventory.ini roundcube-update.yml -e roundcube_version=1.6.10
+```
+
+#### Variables
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `roundcube_version` | Yes | - | Roundcube release to install, for example `1.6.10`. |
+| `php_version` | No | `85` | PHP SCL version used to run the update script; the corresponding Remi PHP package must already be installed. |
+| `roundcube_database` | No | `roundcube` | Database to dump before the update. |
+| `roundcube_directory` | No | `/var/www/roundcube/` | Existing Roundcube document root. |
+| `roundcube_backup_directory` | No | `/opt/backup/` | Directory for the document-root archive and database dump. |
 
