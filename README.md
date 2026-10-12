@@ -104,7 +104,7 @@ privileges, and restarts Postgrey when the managed whitelist block changes. The 
 and Postgrey service must be available on the machine running the playbook.
 
 > [!note]
-> You might want to run this as cron, as Micorsofts endpoint IPs are subject to change.
+> You might want to run this as cron, as Microsofts endpoint IPs are subject to change.
 
 #### Run
 
