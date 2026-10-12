@@ -95,6 +95,31 @@ ansible-playbook -i inventory.ini nexus-update.yml \
 | `nexus_version` | Yes | - | Nexus version for the Sonatype image, for example `3.75.1`. |
 | `nexus_user` | No | `nexus` | User under which Podman container management and the user systemd unit run. |
 
+### Postgrey Exchange Online Whitelist
+
+[`postgrey-exchange-online-whitelist.yml`](postgrey-exchange-online-whitelist.yml) retrieves the
+Exchange Online Protection IP ranges from Microsoft's endpoint service and manages them in
+`/etc/postfix/postgrey_whitelist_clients.local`. The playbook runs on `localhost`, requires root
+privileges, and restarts Postgrey when the managed whitelist block changes. The Postfix directory
+and Postgrey service must be available on the machine running the playbook.
+
+> [!hint]
+> You might want to run this as cron, as Micorsofts endpoint IPs are subject to change.
+
+#### Run
+
+```bash
+ansible-playbook -i inventory.ini postgrey-exchange-online-whitelist.yml
+```
+
+#### Variables
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `postgrey_whitelist_file` | No | `/etc/postfix/postgrey_whitelist_clients.local` | File where the Exchange Online Protection ranges are managed. |
+| `microsoft_endpoint_region` | No | `Worldwide` | Microsoft 365 endpoint cloud region used to retrieve endpoint data. |
+| `microsoft_client_request_id` | No | Derived from `inventory_hostname` | Stable GUID sent to Microsoft's endpoint service for the host. |
+
 ### Roundcube Update
 
 [`roundcube-update.yml`](roundcube-update.yml) updates an existing

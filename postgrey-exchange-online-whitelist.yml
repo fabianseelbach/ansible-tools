@@ -1,0 +1,90 @@
+---
+- name: Whitelist Microsoft Exchange Online in Postgrey
+  hosts: mailserver_host
+  vars:
+    postgrey_whitelist_file: /etc/postfix/postgrey_whitelist_clients.local
+
+    # Microsoft 365 Worldwide cloud
+    microsoft_endpoint_region: Worldwide
+
+    # Use a stable GUID unique to this managed host
+    microsoft_client_request_id: >-
+      {{ inventory_hostname | to_uuid }}
+
+    microsoft_endpoint_url: >-
+      https://endpoints.office.com/endpoints/{{ microsoft_endpoint_region }}
+
+    postgrey_marker: "ANSIBLE MANAGED EXCHANGE ONLINE EOP"
+
+    # Initialize EOP endpoint list
+    eop_ip_ranges: []
+  tasks:
+    - name: Fetch Microsoft 365 Exchange endpoint data
+      check_mode: false
+      ansible.builtin.uri:
+        url: >-
+          {{ microsoft_endpoint_url }}?ServiceAreas=Exchange&ClientRequestId={{ microsoft_client_request_id }}
+        method: GET
+        return_content: true
+        status_code: 200
+        validate_certs: true
+        timeout: 30
+      register: microsoft_endpoints
+      changed_when: false
+
+    - name: Extract Exchange Online Protection sending ranges
+      ansible.builtin.set_fact:
+        eop_ip_ranges: "{{ eop_ip_ranges + (item.ips | default([])) }}"
+      loop: "{{ microsoft_endpoints.json }}"
+      when:
+        - item.serviceArea | default('') == 'Exchange'
+        - item.ips is defined
+        - >-
+          (item.urls | default([])
+          | select('search', 'protection\.outlook\.com')
+          | list | length) > 0
+      loop_control:
+        label: "Endpoint set {{ item.id | default('unknown') }}"
+
+    - name: Normalize and deduplicate IP ranges
+      ansible.builtin.set_fact:
+        eop_ip_ranges: "{{ eop_ip_ranges | unique | sort | list }}"
+
+    - name: Ensure Microsoft returned EOP IP ranges
+      ansible.builtin.assert:
+        that:
+          - eop_ip_ranges | length > 0
+        fail_msg: >-
+          No Exchange Online Protection IP ranges were found.
+          The existing whitelist has not been changed.
+
+    - name: Add or update Exchange Online ranges
+      become: true
+      notify: Restart Postgrey
+      ansible.builtin.blockinfile:
+        path: "{{ postgrey_whitelist_file }}"
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
+        marker: "# {mark} {{ postgrey_marker }}"
+        block: |
+          # Retrieved from Microsoft's Exchange Online Protection endpoints
+          {% for ip_range in eop_ip_ranges %}
+          {{ ip_range }}
+          {% endfor %}
+        backup: true
+
+    - name: Report configured ranges
+      ansible.builtin.debug:
+        msg:
+          - "Microsoft EOP ranges retrieved: {{ eop_ip_ranges | length }}"
+          - "Whitelist file: {{ postgrey_whitelist_file }}"
+          - "Ranges: {{ eop_ip_ranges }}"
+
+  handlers:
+    - name: Restart Postgrey
+      ansible.builtin.service:
+        name: postgrey
+        state: restarted
+        enabled: true
