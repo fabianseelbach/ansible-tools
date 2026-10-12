@@ -103,7 +103,7 @@ Exchange Online Protection IP ranges from Microsoft's endpoint service and manag
 privileges, and restarts Postgrey when the managed whitelist block changes. The Postfix directory
 and Postgrey service must be available on the machine running the playbook.
 
-> [!hint]
+> [!note]
 > You might want to run this as cron, as Micorsofts endpoint IPs are subject to change.
 
 #### Run
