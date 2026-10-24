@@ -9,12 +9,12 @@
     roundcube_backup_name: "{{ ansible_date_time.iso8601_basic_short }}-roundcube-backup"
   tasks:
     - name: Backup Current Version - Document Root
-      archive:
+      community.general.archive:
         path: "{{ roundcube_directory }}"
         dest: "{{ roundcube_backup_directory }}/{{ roundcube_backup_name }}.tgz"
 
     - name: Backup Current Version - Database
-      mysql_db:
+      ansibl.mysql.mysql_db:
         state: dump
         name: "{{ roundcube_database }}"
         target: "{{ roundcube_backup_directory }}/{{ roundcube_backup_name }}.sql"
