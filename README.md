@@ -24,6 +24,15 @@ ansible-galaxy collection install -r requirements.yml
 
 ## Playbooks
 
+| Playbook | Description |
+| --- | --- |
+| [Fail2Ban Whitelist](#fail2ban-whitelist) | Updates Fail2Ban ignore IPs with trusted infrastructure and Better Stack addresses. |
+| [GitLab Upgrade](#gitlab-upgrade) | Upgrades a GitLab container running via Podman and waits for migrations. |
+| [Nexus Update](#nexus-update) | Updates a Nexus Repository Manager container and verifies the service status. |
+| [Postgrey Exchange Online Whitelist](#postgrey-exchange-online-whitelist) | Pulls Microsoft Exchange Online Protection IPs and manages the Postgrey whitelist. |
+| [Keycloak Update](#keycloak-update) | Updates a Keycloak Podman Quadlet container and cleans up old images. |
+| [Roundcube Update](#roundcube-update) | Updates a Roundcube installation and preserves the database and document root. |
+
 ### Fail2Ban Whitelist
 
 [`fail2ban_whitelist.yml`](fail2ban_whitelist.yml) updates the `ignoreip` setting in
