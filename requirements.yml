@@ -2,3 +2,4 @@
 
 collections:
   - containers.podman
+  - community.general

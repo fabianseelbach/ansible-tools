@@ -1,0 +1,68 @@
+---
+
+- hosts: localhost
+  become: true
+  become_user: keycloak
+  vars:
+    image_name: "{{ keycloak_registry }}:{{ keycloak_version }}"
+    keycloak_service: "keycloak-app"
+    keycloak_realm: "master"
+  tasks:
+    - name: Get Podman Container
+      register: keycloak_container
+      containers.podman.podman_container_info:
+        name: "{{ keycloak_service }}"
+
+    - name: Get Keycloak Host Port Config
+      vars:
+        keycloak_ports: "{{ keycloak_container.containers.0.NetworkSettings.Ports }}"
+      ansible.builtin.set_fact:
+        keycloak_protocol: "{{ ('8443/tcp' in keycloak_ports) | ternary('https', 'http') }}"
+        keycloak_port: "{{ keycloak_ports | dict2items | map(attribute='key') | list | first }}"
+        keycloak_host: "{{ keycloak_ports | dict2items | map(attribute='value') | list | first | first }}"
+        keycloak_current_version: "{{ keycloak_container.containers.0.Config.Labels.version }}"
+
+    - name: Update Needed
+      when: keycloak_current_version is version(keycloak_version, '<')
+      block:
+        - name: Pull Image
+          containers.podman.podman_image:
+            name: "{{ image_name }}"
+
+        - name: Replace Version in Quadlet
+          community.general.ini_file:
+            path: "~/.config/containers/systemd/{{ keycloak_service }}.container"
+            section: Container
+            option: Image
+            value: "{{ image_name }}"
+
+        - name: Restart Container
+          ansible.builtin.systemd:
+            scope: user
+            daemon_reload: true
+            name: "{{ keycloak_service }}"
+            state: restarted
+
+    - name: Wait for Port to come online
+      retries: 50
+      until: check is not failed
+      register: check
+      ansible.builtin.uri:
+        url: "{{ keycloak_protocol }}://{{ keycloak_host.HostIp }}:{{ keycloak_host.HostPort }}/realms/{{ keycloak_realm }}/.well-known/openid-configuration"
+        validate_certs: false
+
+    - name: Update Needed
+      when: keycloak_current_version is version(keycloak_version, '<')
+      block:
+
+        - name: Get Images
+          register: images
+          containers.podman.podman_image_info:
+
+        - name: Remove Images
+          loop: "{{ images.images | selectattr('RepoTags.0', 'match', ('^' + (keycloak_registry | regex_escape))) | rejectattr('RepoTags.0', 'eq', image_name) }}"
+          loop_control:
+            label: "{{ item.RepoTags | first }}"
+          containers.podman.podman_image:
+            state: absent
+            name: "{{ item.RepoTags | first }}"

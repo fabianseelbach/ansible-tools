@@ -12,6 +12,8 @@ Source code: [github.com/fabianseelbach/ansible-tools](https://github.com/fabian
 > [CentOS 8](https://www.centos.org/). They are intended to work on [Red Hat Enterprise Linux](https://www.redhat.com/en/technologies/linux-platforms/enterprise-linux)
 > and other RHEL-derived distributions as well, but these are not tested.
 
+*AI Notice: The README.md is generated mostly with the help of AI. The playbooks are all made by a human.*
+
 ## Install
 
 ```bash
@@ -120,6 +122,33 @@ ansible-playbook -i inventory.ini postgrey-exchange-online-whitelist.yml
 | `microsoft_endpoint_region` | No | `Worldwide` | Microsoft 365 endpoint cloud region used to retrieve endpoint data. |
 | `microsoft_client_request_id` | No | Derived from `inventory_hostname` | Stable GUID sent to Microsoft's endpoint service for the host. |
 
+### Keycloak Update
+
+[`keycloak-update.yml`](keycloak-update.yml) upgrades an existing
+[Keycloak](https://www.keycloak.org/) installation managed as a
+[Podman](https://podman.io/) container via a systemd user Quadlet unit. The playbook pulls the
+requested image, updates the `Image=` line in the quadlet unit file, restarts the service, and then
+removes older local images that are no longer in use. This keeps the running container and the
+managed Quadlet configuration aligned with the selected Keycloak version.
+
+#### Run
+
+```bash
+ansible-playbook -i inventory.ini keycloak-update.yml \
+	-e keycloak_registry=quay.io/keycloak/keycloak \
+	-e keycloak_version=26.2.5 \
+	-e keycloak_user=keycloak
+```
+
+#### Variables
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `keycloak_registry` | Yes | - | Container registry or repository for the Keycloak image, for example `quay.io/keycloak/keycloak`. |
+| `keycloak_version` | Yes | - | Keycloak image tag to deploy, for example `26.2.5`. |
+| `keycloak_user` | No | - | User account under which the Podman Quadlet service is managed and restarted. |
+| `keycloak_service` | No | `keycloak-app` | Name of the systemd user unit and corresponding Quadlet file. |
+
 ### Roundcube Update
 
 [`roundcube-update.yml`](roundcube-update.yml) updates an existing
@@ -148,4 +177,3 @@ ansible-playbook -i inventory.ini roundcube-update.yml -e roundcube_version=1.6.
 | `roundcube_database` | No | `roundcube` | Database to dump before the update. |
 | `roundcube_directory` | No | `/var/www/roundcube/` | Existing Roundcube document root. |
 | `roundcube_backup_directory` | No | `/opt/backup/` | Directory for the document-root archive and database dump. |
-
